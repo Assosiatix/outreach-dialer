@@ -77,7 +77,7 @@ function Shell({ me, mode, children }: { me: Me; mode: Mode; children: ReactNode
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
   const sidebar = (
-    <div className="flex h-full flex-col">
+    <div className="flex min-h-full flex-col">
       <div className="flex items-center gap-2.5 px-5 pt-5 pb-6">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-black text-coral">
           <PhoneIcon size={16} />
@@ -136,7 +136,7 @@ function Shell({ me, mode, children }: { me: Me; mode: Mode; children: ReactNode
 
   return (
     <div className="min-h-screen lg:pl-64">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-line bg-white lg:block">{sidebar}</aside>
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 overflow-y-auto overscroll-contain border-r border-line bg-white lg:block">{sidebar}</aside>
 
       {/* mobile top bar */}
       <div className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-white px-4 py-3 lg:hidden">
@@ -148,7 +148,7 @@ function Shell({ me, mode, children }: { me: Me; mode: Mode; children: ReactNode
       {open && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0 bg-black/30" onClick={() => setOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 w-72 bg-white shadow-pop">
+          <aside className="absolute inset-y-0 left-0 w-72 overflow-y-auto overscroll-contain bg-white shadow-pop">
             <button onClick={() => setOpen(false)} className="absolute top-4 right-4 text-ash" aria-label="Close menu">
               <XIcon />
             </button>
