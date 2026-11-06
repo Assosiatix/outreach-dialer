@@ -1,0 +1,227 @@
+// International Outreach Dialer — data model (see Build Plan → Data Model).
+// Four core tables from the plan + sms_messages for Phase 3 SMS follow-up.
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  admin
+  caller
+}
+
+/// online/offline/on_call come from the plan; `away` lets a caller pause
+/// inbound ringing without logging out.
+enum MemberStatus {
+  online
+  away
+  on_call
+  offline
+}
+
+enum ContactStage {
+  new
+  researched
+  contacted
+  follow_up
+  won
+  lost
+}
+
+enum CallDirection {
+  inbound
+  outbound
+}
+
+/// Final statuses: completed, no_answer, busy, failed, canceled, voicemail, missed.
+/// Transient: initiated, ringing, in_progress.
+enum CallStatus {
+  initiated
+  ringing
+  in_progress
+  completed
+  no_answer
+  busy
+  failed
+  canceled
+  voicemail
+  missed
+}
+
+enum SmsDirection {
+  inbound
+  outbound
+}
+
+model TeamMember {
+  id             String       @id @default(cuid())
+  name           String
+  email          String       @unique
+  passwordHash   String       @map("password_hash")
+  role           Role         @default(caller)
+  status         MemberStatus @default(offline)
+  /// Heartbeat from the open dialer tab; stale (> 60s) means effectively offline.
+  lastSeenAt     DateTime?    @map("last_seen_at")
+  /// Personal mobile (E.164) for missed-call SMS alerts. Optional.
+  alertPhone     String?      @map("alert_phone")
+  active         Boolean      @default(true)
+  lastDigestDate String?      @map("last_digest_date")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  calls            CallLog[]
+  assignedContacts Contact[]    @relation("assigned")
+  createdContacts  Contact[]    @relation("created")
+  smsMessages      SmsMessage[]
+
+  @@map("team_members")
+}
+
+model Contact {
+  id              String       @id @default(cuid())
+  businessName    String       @map("business_name")
+  contactPerson   String?      @map("contact_person")
+  website         String?
+  /// ISO 3166-1 alpha-2, derived from the phone number when not given.
+  country         String?
+  /// E.164, e.g. +442071234567
+  phoneNumber     String       @map("phone_number")
+  email           String?
+  issueIdentified String?      @map("issue_identified")
+  researchNotes   String?      @map("research_notes")
+  stage           ContactStage @default(new)
+  lastContactedAt DateTime?    @map("last_contacted_at")
+  nextFollowUpAt  DateTime?    @map("next_follow_up_at")
+  assignedToId    String?      @map("assigned_to_id")
+  createdById     String?      @map("created_by_id")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  assignedTo  TeamMember?  @relation("assigned", fields: [assignedToId], references: [id], onDelete: SetNull)
+  createdBy   TeamMember?  @relation("created", fields: [createdById], references: [id], onDelete: SetNull)
+  calls       CallLog[]
+  smsMessages SmsMessage[]
+
+  @@index([phoneNumber])
+  @@index([stage])
+  @@index([nextFollowUpAt])
+  @@map("contacts")
+}
+
+model CallLog {
+  id                String        @id @default(cuid())
+  contactId         String?       @map("contact_id")
+  teamMemberId      String?       @map("team_member_id")
+  direction         CallDirection
+  fromNumber        String        @map("from_number")
+  toNumber          String        @map("to_number")
+  status            CallStatus    @default(initiated)
+  /// Talk time in seconds (bridged leg), 0 when not connected.
+  duration          Int           @default(0)
+  recordingUrl      String?       @map("recording_url")
+  recordingSid      String?       @map("recording_sid")
+  recordingDuration Int?          @map("recording_duration")
+  notes             String?
+  /// Twilio parent CallSid (browser leg for outbound, PSTN leg for inbound).
+  callSid           String?       @unique @map("call_sid")
+  /// Twilio child CallSid (the dialed leg).
+  childCallSid      String?       @map("child_call_sid")
+  errorCode         String?       @map("error_code")
+  errorMessage      String?       @map("error_message")
+  alertSentAt       DateTime?     @map("alert_sent_at")
+
+  // ── Cost tracking (USD, stored as micro-dollars: 1 USD = 1_000_000) ──
+  /// Per-minute rate of the destination (outbound) or our number (inbound) at call time.
+  rateMicros          Int?        @map("rate_micros")
+  costCallMicros      Int?        @map("cost_call_micros")      // PSTN leg
+  costClientMicros    Int?        @map("cost_client_micros")    // browser (Client) leg(s)
+  costRecordingMicros Int?        @map("cost_recording_micros")
+  costTotalMicros     Int?        @map("cost_total_micros")
+  costStatus          CostStatus  @default(none) @map("cost_status")
+  costCheckedAt       DateTime?   @map("cost_checked_at")
+  costAttempts        Int         @default(0) @map("cost_attempts")
+  startedAt         DateTime      @default(now()) @map("started_at")
+  answeredAt        DateTime?     @map("answered_at")
+  endedAt           DateTime?     @map("ended_at")
+
+  contact    Contact?    @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  teamMember TeamMember? @relation(fields: [teamMemberId], references: [id], onDelete: SetNull)
+
+  @@index([contactId])
+  @@index([teamMemberId])
+  @@index([startedAt])
+  @@index([status])
+  @@index([costStatus])
+  @@map("call_logs")
+}
+
+/// none = not computed yet, estimated = from rates (shown right after the call),
+/// final = actual price reported by Twilio.
+enum CostStatus {
+  none
+  estimated
+  final
+}
+
+/// Cached Twilio per-minute rate for a phone number (Pricing API lookups are slow).
+model VoiceRate {
+  number          String   @id
+  outboundMicros  Int?     @map("outbound_micros")
+  inboundMicros   Int?     @map("inbound_micros")
+  fetchedAt       DateTime @default(now()) @map("fetched_at")
+
+  @@map("voice_rates")
+}
+
+/// Small key/value store for app settings (monthly budget, alert bookkeeping).
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("app_settings")
+}
+
+model TwilioNumber {
+  id          String   @id @default(cuid())
+  /// E.164
+  phoneNumber String   @unique @map("phone_number")
+  /// ISO 3166-1 alpha-2 of the number itself — used for local caller ID.
+  country     String
+  label       String?
+  isDefault   Boolean  @default(false) @map("is_default")
+  voiceEnabled Boolean @default(true) @map("voice_enabled")
+  smsEnabled  Boolean  @default(false) @map("sms_enabled")
+  /// A Verified Caller ID (a number you own elsewhere, verified in Twilio): usable as outbound
+  /// caller ID only — it can't receive calls or send SMS through Twilio.
+  verifiedOnly Boolean @default(false) @map("verified_only")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("twilio_numbers")
+}
+
+model SmsMessage {
+  id           String       @id @default(cuid())
+  contactId    String?      @map("contact_id")
+  teamMemberId String?      @map("team_member_id")
+  direction    SmsDirection
+  fromNumber   String       @map("from_number")
+  toNumber     String       @map("to_number")
+  body         String
+  status       String       @default("queued")
+  messageSid   String?      @unique @map("message_sid")
+  errorCode    String?      @map("error_code")
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  contact    Contact?    @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  teamMember TeamMember? @relation(fields: [teamMemberId], references: [id], onDelete: SetNull)
+
+  @@index([contactId])
+  @@map("sms_messages")
+}

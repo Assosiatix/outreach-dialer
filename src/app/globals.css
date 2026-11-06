@@ -1,26 +1,93 @@
 @import "tailwindcss";
 
+/*
+ * Assosiatix palette — exact hex, never approximated:
+ * #000000 black · #FFFFFF white · #494949 graphite · #7C7A7A ash · #FF5D73 coral.
+ * Coral + its tints = accents and problems (missed, hang up). One green only for
+ * success (connected, call) — same token as assosiatix-tools. Primary buttons are black.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --black: #000000;
+  --white: #ffffff;
+  --graphite: #494949;
+  --ash: #7c7a7a;
+  --coral: #ff5d73;
+  --coral-soft: color-mix(in oklab, var(--coral) 9%, var(--white));
+  --coral-tint: color-mix(in oklab, var(--coral) 18%, var(--white));
+  --coral-ink: color-mix(in oklab, var(--coral) 70%, var(--black)); /* coral text on white, AA */
+  --positive: oklch(0.58 0.13 158);
+  --positive-soft: color-mix(in oklab, var(--positive) 12%, var(--white));
+  --surface: oklch(0.975 0.003 20);
+  --line: color-mix(in oklab, var(--black) 9%, var(--white));
+  --line-strong: color-mix(in oklab, var(--black) 16%, var(--white));
+  --shadow-card: 0 1px 2px oklch(0.25 0.01 20 / 0.05), 0 4px 16px oklch(0.25 0.01 20 / 0.05);
+  --shadow-pop: 0 2px 4px oklch(0.25 0.01 20 / 0.08), 0 16px 40px oklch(0.25 0.01 20 / 0.16);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-black: var(--black);
+  --color-white: var(--white);
+  --color-graphite: var(--graphite);
+  --color-ash: var(--ash);
+  --color-coral: var(--coral);
+  --color-coral-soft: var(--coral-soft);
+  --color-coral-tint: var(--coral-tint);
+  --color-coral-ink: var(--coral-ink);
+  --color-positive: var(--positive);
+  --color-positive-soft: var(--positive-soft);
+  --color-surface: var(--surface);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-sora), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --shadow-card: var(--shadow-card);
+  --shadow-pop: var(--shadow-pop);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  background: var(--surface);
+  color: var(--black);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--coral);
+  outline-offset: 2px;
+}
+
+/* Shared form control look */
+.field {
+  width: 100%;
+  border: 1px solid var(--line-strong);
+  border-radius: 0.625rem;
+  background: var(--white);
+  padding: 0.55rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--black);
+  transition: border-color 120ms, box-shadow 120ms;
+}
+.field::placeholder {
+  color: var(--ash);
+}
+.field:focus {
+  outline: none;
+  border-color: var(--black);
+  box-shadow: 0 0 0 3px var(--coral-tint);
+}
+textarea.field {
+  resize: vertical;
+}
+
+@keyframes ring-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--positive) 45%, transparent); }
+  100% { box-shadow: 0 0 0 14px transparent; }
+}
+.ring-pulse {
+  animation: ring-pulse 1.2s ease-out infinite;
 }
