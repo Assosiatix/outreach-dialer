@@ -30,7 +30,7 @@ export function DirectionIcon({ direction, status }: { direction: CallDirection;
 
 export function RecordingPlayer({ callId }: { callId: string }) {
   return (
-    <audio controls preload="none" className="h-9 w-full max-w-xs" src={`/api/recordings/${callId}`}>
+    <audio controls preload="none" className="h-10 w-full max-w-md" src={`/api/recordings/${callId}`}>
       Your browser can&apos;t play this recording.
     </audio>
   );
