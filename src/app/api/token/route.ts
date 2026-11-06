@@ -9,6 +9,6 @@ export const POST = jsonRoute(async () => {
   if (!twilioConfigured()) {
     throw new HttpError(503, "Twilio is not configured yet. Fill the TWILIO_* values in .env and restart.");
   }
-  // TWILIO_EDGE: nearest Twilio edge for media, e.g. "singapore" for callers in Pakistan.
-  return { ...createVoiceToken(member.id), edge: cleanEnv(process.env.TWILIO_EDGE) || "roaming" };
+  // TWILIO_VOICE_EDGE: nearest Twilio edge for media, e.g. "singapore" for callers in Pakistan.
+  return { ...createVoiceToken(member.id), edge: cleanEnv(process.env.TWILIO_VOICE_EDGE) || "roaming" };
 });

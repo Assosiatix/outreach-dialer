@@ -4,6 +4,8 @@ import type { NextConfig } from "next";
 // data, so we use the classic dynamic rendering model (no Cache Components).
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // This app is its own project even when it sits inside another repo's folder on the VPS.
+  outputFileTracingRoot: process.cwd(),
   allowedDevOrigins: [
     "127.0.0.1",
     "patch-dense-passed-landscape.trycloudflare.com",

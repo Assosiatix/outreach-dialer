@@ -118,7 +118,7 @@ All Twilio webhooks are verified with the `X-Twilio-Signature` header against `P
 - **Webhook check:** if the TwiML App doesn't point at `PUBLIC_BASE_URL` (e.g. the dev tunnel URL changed), every page shows a
   banner until an admin runs *Numbers → Configure webhooks*.
 - **Compliance:** research notes double as the record of why a business was contacted (B2B rules — PECR, EU, TCPA — differ by country).
-- **Audio quality from Pakistan:** try `TWILIO_EDGE="singapore"`.
+- **Audio quality from Pakistan:** try `TWILIO_VOICE_EDGE="singapore"` (not `TWILIO_EDGE`: the Twilio library reads that name itself and breaks every API call).
 - **Commands:** `pnpm test` (unit tests for status rules, caller-ID selection, phone parsing), `pnpm typecheck`, `pnpm lint`, `pnpm db:studio`.
 
 ## Code map
